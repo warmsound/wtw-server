@@ -1,0 +1,9 @@
+{
+  "name": "wtw-server",
+  "description": "Whatever The Weather server",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "sqlite3": "*"
+  }
+}
