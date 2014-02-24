@@ -4,7 +4,8 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
-    "sqlite3": "*",
-    "xmlhttprequest": ">=1.6.0"
+    "sqlite3": "2.2.0",
+    "xmlhttprequest": "1.6.0",
+    "async": "0.2.10"
   }
 }

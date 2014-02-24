@@ -1,5 +1,6 @@
 var db = (function() {
 	var fs = require("fs");
+	var async = require("async");
 	var sqlite3 = require("sqlite3").verbose();
 	var sqlDb = null;
 	
@@ -28,40 +29,74 @@ var db = (function() {
 			}
 		},
 		
-		syncLocation: function (location) {
+		getLocationId: function (location, callback) {
 			// Find locations's row in locations table
 			sqlDb.get("SELECT * FROM locations WHERE lat = ? AND long = ?", location.lat, location.long, function (err, row) {
 				// Doesn't exist, so add
 				if (row === undefined) {
-					sqlDb.get("INSERT INTO locations (name, lat, long) VALUES (?, ?, ?)",
-						location.name, location.lat, location.long);
-					sqlDb.get("SELECT last_insert_rowid() as id", function (err, row) {
-						location.id = row.id;
+					console.log("Adding location: " + location.name);
+					// Ensure location is inserted before determining new row's ID
+					async.series({
+					    // Insert new row into locations table
+					    insertLocation: function (callback) {
+							sqlDb.get("INSERT INTO locations (name, lat, long) VALUES (?, ?, ?)",
+								location.name, location.lat, location.long,
+								function (err, row) {
+									callback(err);
+								}
+							);							
+					    },
+					    // Determine ID for new row
+					    getRowId: function (callback) {
+					    	sqlDb.get("SELECT last_insert_rowid() as id", function (err, row) {								
+								callback(err, row.id);
+					    	});							
+					    }
+					},
+					function (err, results) {
+						callback(null, results.getRowId);
 					});
 				}
 				// Already exists, so update locations's ID
 				else
 				{
-					location.id = row.id;
+					callback(null, row.id);
 				}
 			});
 		},
 		
-		syncService: function (service) {
+		getServiceId: function (service, callback) {
 			// Find service's row in services table
 			sqlDb.get("SELECT * FROM services WHERE name = ?", service.name, function (err, row) {
 				// Doesn't exist, so add
 				if (row === undefined) {
-					sqlDb.run("INSERT INTO services (name, desc, query_freq_hrs, forecast_freq_hrs, forecast_ahead_hrs) VALUES (?, ?, ?, ?, ?)",
-						service.name, service.desc, service.queryFreqHrs, service.forecastFreqHrs, service.forecastAheadHrs);
-					sqlDb.get("SELECT last_insert_rowid() as id", function (err, row) {
-						service.id = row.id;
+					console.log("Adding service: " + service.name);
+					// Ensure service is inserted before determining new row's ID
+					async.series({
+						// Insert new row into services table
+						insertService: function (callback) {
+							sqlDb.run("INSERT INTO services (name, desc, query_freq_hrs, forecast_freq_hrs, forecast_ahead_hrs) VALUES (?, ?, ?, ?, ?)",
+							    service.name, service.desc, service.queryFreqHrs, service.forecastFreqHrs, service.forecastAheadHrs,
+							    function (err, row) {
+									callback(err);
+								}
+							);
+						},
+						// Determine ID for new row
+						getRowId: function (callback) {
+							sqlDb.get("SELECT last_insert_rowid() as id", function (err, row) {
+								callback(err, row.id);
+							});
+						}
+					},
+					function (err, results) {
+						callback(null, results.getRowId);
 					});
 				}
 				// Already exists, so update service's ID
 				else
 				{
-					service.id = row.id;
+					callback(null, row.id);
 				}
 			});
 		},
