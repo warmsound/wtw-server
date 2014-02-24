@@ -1,11 +1,12 @@
 {
-  "name": "wtw-server",
-  "description": "Whatever The Weather server",
-  "version": "0.0.1",
-  "private": true,
-  "dependencies": {
-    "sqlite3": "2.2.0",
-    "xmlhttprequest": "1.6.0",
-    "async": "0.2.10"
-  }
+	"name": "wtw-server",
+	"description": "Whatever The Weather server",
+	"version": "0.0.1",
+	"private": true,
+	"dependencies": {
+		"sqlite3": "2.2.x",
+		"xmlhttprequest": "1.6.x",
+		"async": "0.2.x",
+		"express": "3.0.x"
+	}
 }

@@ -2,6 +2,7 @@ var wtw = (function () {
 	var async = require("async");
 	var config = require("./config");
 	var db = require("./db");
+	var server = require("./server");
 	
 	var locations = [];
 	var services = [];
@@ -12,10 +13,10 @@ var wtw = (function () {
 			db.getLocationId(location, function (err, id) {
 				location.id = id;
 				locations.push(location);
-				callback();
+				callback(err);
 			});
-		}, function () {
-			callback();
+		}, function (err) {
+			callback(err);
 		});
 	};
 	
@@ -32,10 +33,10 @@ var wtw = (function () {
 				service.start(locations, db.addForecast);
 				services.push(service);
 				
-				callback();
+				callback(err);
 			});	
-		}, function () {
-			callback();
+		}, function (err) {
+			callback(err);
 		});
 	};
 	
@@ -49,9 +50,17 @@ var wtw = (function () {
 			    function (callback) {
 			    	loadServices(function () { callback(); });			    	
 			    }
-			]);
+			],
+			function () {
+				server.init();
+			});
+		},
+		
+		getServices: function () {
+			return services;
 		}
 	};
 }());
 
+module.exports = wtw;
 wtw.init();
