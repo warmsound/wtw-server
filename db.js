@@ -48,16 +48,6 @@ var db = (function() {
 		sqlDb = new sqlite3.Database(file);
 	}
 	
-	function insertServiceWeatherCodes (service, callback) {
-		var weatherCodes = service.getWeatherCodes();
-		var statement = sqlDb.prepare("INSERT INTO service_weather_codes (service_id, weather_code, weather_icon_id) VALUES (?, ?, ?)");
-		var weatherCode;
-		for (weatherCode in weatherCodes) {
-			statement.run(service.id, weatherCode, wi.getIconId(weatherCodes[weatherCode].weatherIcon));
-		}
-		statement.finalize(function (err) { callback(err); });
-	};
-	
 	return {
 		init: function (file, callback) {
 			if (fs.existsSync(file)) {
@@ -124,10 +114,6 @@ var db = (function() {
 								}
 							);
 						},
-						// Insert weather codes for service
-						insertServiceWeatherCodes: function (callback) {
-							insertServiceWeatherCodes(service, callback);
-						},
 						// Determine ID for new row
 						getRowId: function (callback) {
 							sqlDb.get("SELECT last_insert_rowid() as id", function (err, row) {
@@ -136,15 +122,25 @@ var db = (function() {
 						}
 					},
 					function (err, results) {
-						callback(null, results.getRowId);
+						callback(null, results.getRowId, false);
 					});
 				}
 				// Already exists, so update service's ID
 				else
 				{
-					callback(null, row.id);
+					callback(null, row.id, true);
 				}
 			});
+		},
+		
+		insertServiceWeatherCodes: function (service, callback) {
+			var weatherCodes = service.getWeatherCodes();
+			var statement = sqlDb.prepare("INSERT INTO service_weather_codes (service_id, weather_code, weather_icon_id) VALUES (?, ?, ?)");
+			var weatherCode;
+			for (weatherCode in weatherCodes) {
+				statement.run(service.id, weatherCode, wi.getIconId(weatherCodes[weatherCode].weatherIcon));
+			}
+			statement.finalize(function (err) { callback(err); });
 		},
 		
 		getServices: function (callback) {
@@ -154,7 +150,7 @@ var db = (function() {
 		},
 		
 		getForecasts: function (serviceId, locationId, startTime, endTime, callback) {
-			sqlDb.all("SELECT query_time, forecast_time, weather_code_id, temp FROM forecasts WHERE service_id = ? AND location_id = ? AND forecast_time BETWEEN ? AND ?",
+			sqlDb.all("SELECT query_time, forecast_time, weather_code, temp FROM forecasts WHERE service_id = ? AND location_id = ? AND forecast_time BETWEEN ? AND ?",
 				serviceId, locationId, startTime, endTime,
 				function (err, rows) {
 					callback(err, rows);

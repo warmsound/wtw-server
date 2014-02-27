@@ -24,18 +24,33 @@ var wtw = (function () {
 		async.each(config.services, function (configService, callback) {					
 			// Load module for each service in config
 			var service = require("./services/" + configService.name);
+			var isNewService = false;
 			
-			// Add service to DB if non-existent; update service ID
-			db.getServiceId(service, function (err, id) {
-				service.id = id;
-				
+			async.series([
+			    function (callback) {
+			    	// Add service to DB if non-existent; update service ID
+					db.getServiceId(service, function (err, id, serviceExisted) {
+						service.id = id;
+						isNewService = !serviceExisted;
+						callback();
+					});
+			    },
+			    function (callback) {
+			    	if (isNewService) {
+				    	db.insertServiceWeatherCodes(service, function (err) {
+							callback(err);
+						});
+			    	} else {
+			    		callback(null);
+			    	}
+			    }
+			],
+			function (err) {
 				// Start service
 				console.log("Starting service: " + service.name);
 				service.start(locations, db.addForecast);
 				services.push(service);
-				
-				callback(err);
-			});	
+			});
 		}, function (err) {
 			callback(err);
 		});
