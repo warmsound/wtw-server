@@ -5,29 +5,45 @@ var server = (function () {
 	var app = null;
 	
 	function onGetData(req, res) {
+		var resource = null;
+		
 		switch (req.params.format) {
 		case "json":
-			json.onGetData(req, res);
+			resource = json;
 			break;
-			
+		
 		case "xml":
 		default:
 			res.status(404).send("Invalid format. Valid values are: 'json'.");
 			break;
 		}
+		
+		switch (req.params.resource) {
+		case "services":
+			resource.getServices(req, res);
+			break;
+			
+		case "forecasts":
+			resource.getForecasts(req, res);
+			break;
+			
+		default:
+			res.status(404).send("Invalid resource. Valid values are: 'services', 'forecasts'.");
+			break;
+		}		
 	};
 	
 	return {
-		init: function () {
+		init: function (db) {
 			app = express();
 			
 			// Set up resources
-			json.init(require("./main"));
+			json.init(db);
 			
 			// Set up routes
 			app.get("/wtw/data/:format/:resource", onGetData);
-			app.get("/", function (req, res) {
-				res.status(404).send("Invalid request. Valid requests are in the form /wtw/data/[format]/[service].");
+			app.get("*", function (req, res) {
+				res.status(404).send("Invalid request. Valid requests are in the form: '/wtw/data/&lt;format&gt;/&lt;resource&gt;'");
 			});
 			
 			app.listen(config.port);

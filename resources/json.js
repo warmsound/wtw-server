@@ -1,31 +1,26 @@
 var json = (function () {
-	var wtw = null;
-	
-	function onGetServices (req, res) {
-		var services = wtw.getServices();
-		var i;
-		var response = [];
-		for (i = 0; i < services.length; ++i) {
-			response.push(services[i].name);
-		}
-		res.send(JSON.stringify(response));
-	};
+	var db = null;
 	
 	return {
-		init: function (initWtw) {
-			wtw = initWtw;
+		init: function (initDb) {
+			db = initDb;
 		},
 		
-		onGetData: function (req, res) {
-			switch (req.params.resource) {
-			case "services":
-				onGetServices(req, res);
-				break;
-				
-			case "forecasts":
-			default:
-				// TODO
-				break;
+		getServices: function (req, res) {			
+			db.getServices(function (err, services) {
+				res.send(JSON.stringify(services));
+			});
+		},
+		
+		getForecasts: function (req, res) {
+			if (req.query.serviceId && req.query.locationId && req.query.start && req.query.end) { 
+				db.getForecasts(req.query.serviceId, req.query.locationId, req.query.start, req.query.end, function (err, forecasts) {
+					res.send(JSON.stringify(forecasts, null, "\t"));
+				});
+			}
+			else
+			{
+				res.status(404).send("Invalid query. Query must contain values: 'locationId', 'serviceId', 'start', 'end'.");
 			}
 		}
 	};

@@ -30,6 +30,7 @@ var wtw = (function () {
 				service.id = id;
 				
 				// Start service
+				console.log("Starting service: " + service.name);
 				service.start(locations, db.addForecast);
 				services.push(service);
 				
@@ -42,8 +43,10 @@ var wtw = (function () {
 	
 	return {
 		init: function () {
-			db.init(config.dbFile);
 			async.series([
+			    function (callback) {
+			    	db.init(config.dbFile, function () { callback(); });
+			    },
 			    function (callback) {
 			    	loadLocations(function () { callback(); });
 			    },
@@ -52,7 +55,7 @@ var wtw = (function () {
 			    }
 			],
 			function () {
-				server.init();
+				server.init(db);
 			});
 		},
 		

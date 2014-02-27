@@ -8,12 +8,46 @@ var met = (function () {
 	var forecastFreqHrs = 3;
 	var forecastAheadHrs = 72;
 	
+	var weatherCodes = {
+		"0": { weatherIcon: "wi-night-clear" },
+		"1": { weatherIcon: "wi-day-sunny" },
+		"2": { weatherIcon: "wi-night-cloudy" },
+		"3": { weatherIcon: "wi-day-cloudy" },
+		// "4": { weatherIcon: "not-used" },
+		"5": { weatherIcon: "wi-fog" }, // Mist
+		"6": { weatherIcon: "wi-fog" },
+		"7": { weatherIcon: "wi-cloudy" },
+		"8": { weatherIcon: "wi-cloudy" }, // Overcast
+		"9": { weatherIcon: "wi-night-rain-mix" },
+		"10": { weatherIcon: "wi-day-rain-mix" },
+		"11": { weatherIcon: "wi-showers" },
+		"12": { weatherIcon: "wi-rain-mix" },
+		"13": { weatherIcon: "wi-night-rain" },
+		"14": { weatherIcon: "wi-day-rain" },
+		"15": { weatherIcon: "wi-rain" },
+		"16": { weatherIcon: "wi-night-hail" }, // Sleet shower (night)
+		"17": { weatherIcon: "wi-day-hail" }, // Sleet shower (day
+		"18": { weatherIcon: "wi-hail" }, // Sleet
+		"19": { weatherIcon: "wi-night-hail" },
+		"20": { weatherIcon: "wi-day-hail" },
+		"21": { weatherIcon: "wi-hail" },
+		"22": { weatherIcon: "wi-night-snow" }, // Light snow shower (night)
+		"23": { weatherIcon: "wi-day-snow" }, // Light snow shower (day)
+		"24": { weatherIcon: "wi-snow" }, // Light snow
+		"25": { weatherIcon: "wi-night-snow" },
+		"26": { weatherIcon: "wi-day-snow" },
+		"27": { weatherIcon: "wi-snow" },
+		"28": { weatherIcon: "wi-night-lightning" }, // Thunder shower (night)
+		"29": { weatherIcon: "wi-day-lightning" }, // Thunder shower (day)
+		"30": { weatherIcon: "wi-lightning" } // Thunder
+	};
+	
 	var url = "http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/json/3672?res=3hourly&key=";
 	var apiKey = "c5ff98ca-c067-4506-b77e-ed968997548a";
 	var firstIntervalObject = null;
 	var intervalObject = null;
 	var forecastCallback = null;
-	var service = null;	
+	var service = null;
 	
 	function getQueryUrl () {
 		return url + apiKey;
@@ -36,12 +70,9 @@ var met = (function () {
 		return queryTime.toJSON();
 	}
 	
-	// Work backwards from end of day to determine forecast time
-	// e.g. if there are 5 intervals, and the forecast frequency is 3 hours,
-	// then the 5 intervals must correspond to 9am, 12pm, 3pm, 6pm and 9pm.
-	function getForecastTime (date, interval, intervalCount) {
+	function getForecastTime (date, offsetMins) {
 		var forecastTime = new Date(date);
-		forecastTime.setHours(forecastTime.getHours() + 24 - ((intervalCount - interval) * forecastFreqHrs));
+		forecastTime.setMinutes(forecastTime.getMinutes() + offsetMins);
 		return forecastTime.toJSON();
 	}
 	
@@ -57,21 +88,23 @@ var met = (function () {
 	function parseQueryResult (location, result) {
 		var res = JSON.parse(result);		
 		var day, days = res.SiteRep.DV.Location.Period;
-		var interval, intervals;
-		var forecast;
+		var forecast, forecasts;
+		var fc;
 		
 		for (day = 0; day < days.length; ++day) {
-			intervals = days[day].Rep;
-			for (interval = 0; interval < intervals.length; ++interval) {
-				forecast = {
+			forecasts = days[day].Rep;
+			for (forecast = 0; forecast < forecasts.length; ++forecast) {
+				fc = {
 					locationId: location.id,
 					serviceId: service.id,
 					queryTime: getQueryTime(res.SiteRep.DV.dataDate),
-					forecastTime: getForecastTime(days[day].value, interval, intervals.length),
-					weatherCodeId: parseInt(intervals[interval].W),
-					temp: parseInt(intervals[interval].T)
+					forecastTime: getForecastTime(days[day].value, forecasts[forecast].$),
+					weatherCode: parseInt(forecasts[forecast].W),
+					temp: parseInt(forecasts[forecast].T),
+					windSpeed: forecasts[forecast].W,
+					windDir: forecasts[forecast].D
 				};
-				forecastCallback(forecast);
+				forecastCallback(fc);
 			}
 		}		
 	};
@@ -116,6 +149,10 @@ var met = (function () {
 					clearInterval(intervalObject);
 				}				
 			}			
+		},
+		
+		getWeatherCodes: function () {
+			return weatherCodes;
 		}
 	};	
 }());
