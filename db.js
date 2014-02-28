@@ -150,12 +150,12 @@ var db = (function() {
 		},
 		
 		getForecasts: function (serviceId, locationId, startTime, endTime, callback) {
-			sqlDb.all("SELECT query_time, forecast_time, weather_code, temp FROM forecasts WHERE service_id = ? AND location_id = ? AND forecast_time BETWEEN ? AND ?",
+			sqlDb.all("SELECT query_time, forecast_time, (SELECT name FROM weather_icons WHERE id = (SELECT weather_icon_id FROM service_weather_codes WHERE service_weather_codes.service_id = forecasts.service_id AND service_weather_codes.weather_code = forecasts.weather_code)) AS weather_icon_name, temp, wind_speed, wind_dir FROM forecasts WHERE service_id = ? AND location_id = ? AND forecast_time BETWEEN ? AND ?",
 				serviceId, locationId, startTime, endTime,
 				function (err, rows) {
 					callback(err, rows);
 				}
-			);
+			);			
 		},
 		
 		addForecast: function (forecast) {

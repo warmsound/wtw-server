@@ -86,27 +86,31 @@ var met = (function () {
 	};
 	
 	function parseQueryResult (location, result) {
-		var res = JSON.parse(result);		
-		var day, days = res.SiteRep.DV.Location.Period;
-		var forecast, forecasts;
-		var fc;
-		
-		for (day = 0; day < days.length; ++day) {
-			forecasts = days[day].Rep;
-			for (forecast = 0; forecast < forecasts.length; ++forecast) {
-				fc = {
-					locationId: location.id,
-					serviceId: service.id,
-					queryTime: getQueryTime(res.SiteRep.DV.dataDate),
-					forecastTime: getForecastTime(days[day].value, forecasts[forecast].$),
-					weatherCode: parseInt(forecasts[forecast].W),
-					temp: parseInt(forecasts[forecast].T),
-					windSpeed: forecasts[forecast].W,
-					windDir: forecasts[forecast].D
-				};
-				forecastCallback(fc);
+		var res = JSON.parse(result);
+		try {
+			var day, days = res.SiteRep.DV.Location.Period;
+			var forecast, forecasts;
+			var fc;
+			
+			for (day = 0; day < days.length; ++day) {
+				forecasts = days[day].Rep;
+				for (forecast = 0; forecast < forecasts.length; ++forecast) {
+					fc = {
+						locationId: location.id,
+						serviceId: service.id,
+						queryTime: getQueryTime(res.SiteRep.DV.dataDate),
+						forecastTime: getForecastTime(days[day].value, forecasts[forecast].$),
+						weatherCode: parseInt(forecasts[forecast].W),
+						temp: parseInt(forecasts[forecast].T),
+						windSpeed: forecasts[forecast].W,
+						windDir: forecasts[forecast].D
+					};
+					forecastCallback(fc);
+				}
 			}
-		}		
+		} catch (err) {
+			console.log("Error handling response from service: " + service.name);
+		}				
 	};
 	
 	return {

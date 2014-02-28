@@ -50,6 +50,7 @@ var wtw = (function () {
 				console.log("Starting service: " + service.name);
 				service.start(locations, db.addForecast);
 				services.push(service);
+				callback(err);
 			});
 		}, function (err) {
 			callback(err);

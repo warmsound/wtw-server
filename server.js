@@ -46,6 +46,7 @@ var server = (function () {
 				res.status(404).send("Invalid request. Valid requests are in the form: '/wtw/data/&lt;format&gt;/&lt;resource&gt;'");
 			});
 			
+			console.log("Starting server on port: " + config.port);
 			app.listen(config.port);
 		}
 	};
