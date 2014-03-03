@@ -30,7 +30,10 @@ var server = (function () {
 		default:
 			res.status(404).send("Invalid resource. Valid values are: 'services', 'forecasts'.");
 			break;
-		}		
+		}
+		
+	// Allow cross-origin access to API (jQuery uses OPTIONS, other frameworks may simply use GET)
+		res.header("Access-Control-Allow-Origin", "*");
 	};
 	
 	return {
@@ -44,6 +47,11 @@ var server = (function () {
 			app.get("/wtw/data/:format/:resource", onGetData);
 			app.get("*", function (req, res) {
 				res.status(404).send("Invalid request. Valid requests are in the form: '/wtw/data/&lt;format&gt;/&lt;resource&gt;'");
+			});
+			// Allow cross-origin access to API (jQuery uses OPTIONS, other frameworks may simply use GET)
+			app.options("*", function(req, res){
+			  res.header("Access-Control-Allow-Origin", "*");
+			  res.end("");
 			});
 			
 			console.log("Starting server on port: " + config.port);
