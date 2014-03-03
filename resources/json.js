@@ -14,8 +14,8 @@ var json = (function () {
 		
 		getForecasts: function (req, res) {
 			if (req.query.serviceId && req.query.locationId && req.query.start && req.query.end) { 
-				db.getForecasts(req.query.serviceId, req.query.locationId, req.query.start, req.query.end, function (err, forecasts) {
-					res.send(JSON.stringify(forecasts, null, "\t"));
+				db.getForecasts(req.query.serviceId, req.query.locationId, req.query.start, req.query.end, function (err, results) {
+					res.send(JSON.stringify(results, null, "\t"));
 				});
 			}
 			else

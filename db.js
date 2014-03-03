@@ -46,6 +46,71 @@ var db = (function() {
     statement.finalize(function (err) { callback(err); });
   };
   
+  function generateResults (rows)
+  {
+    var results = { forecastTimes: [], agoTimes: [], forecasts: [] }; 
+    var uniqueForecastTimes = {}, uniqueAgoTimes = {};
+    var forecastTimeIndices = {}, agoTimeIndices = {};
+    var forecastTimeIndex, agoTimeIndex;
+    var forecastTime, queryTime, agoTime;
+    var i, j;
+    
+    // 1st pass: determine unique forecast and ago times
+    for (i = 0; i < rows.length; ++i) {
+      forecastTime = rows[i].forecast_time;
+      queryTime = rows[i].query_time;
+            
+      agoTime = ((new Date(forecastTime)).getTime() - (new Date(queryTime)).getTime());
+      agoTime /= (1000 * 60 * 60); // Convert ms to hrs
+      
+      if (agoTime >= 0) {
+        uniqueAgoTimes[agoTime] = true;
+        uniqueForecastTimes[forecastTime] = true;
+      }
+    }
+    
+    // Sort unique forecast and ago times, and assign to results
+    results.forecastTimes = Object.keys(uniqueForecastTimes).sort();
+    results.agoTimes = Object.keys(uniqueAgoTimes).sort(function numericalSortDescending (a, b) {
+      return b - a;
+    });
+    
+    // Build forecast and ago time indices: allow reverse look-up
+    for (i = 0; i < results.forecastTimes.length; ++i) {
+      forecastTimeIndices[results.forecastTimes[i]] = i;
+    }
+    
+    for (i = 0; i < results.agoTimes.length; ++i) {
+      agoTimeIndices[results.agoTimes[i]] = i;
+    }
+    
+    // Initialise 2D forecasts array
+    for (i = 0; i < results.forecastTimes.length; ++i) {
+      results.forecasts[i] = [];
+      
+      for (j = 0; j < results.agoTimes.length; ++ j) {
+        results.forecasts[i][j] = {};
+      }
+    }
+    
+    // 2nd pass: insert forecast into appropriate slot in 2D forecasts array
+    for (i = 0; i < rows.length; ++i) {
+      forecastTime = rows[i].forecast_time;
+      queryTime = rows[i].query_time;
+      
+      agoTime = ((new Date(forecastTime)).getTime() - (new Date(queryTime)).getTime());
+      agoTime /= (1000 * 60 * 60); // Convert ms to hrs
+      
+      if (agoTime >= 0) {
+        forecastTimeIndex = forecastTimeIndices[forecastTime];
+        agoTimeIndex = agoTimeIndices[agoTime];      
+        results.forecasts[forecastTimeIndex][agoTimeIndex] = rows[i];
+      }
+    }
+    
+    return results;    
+  }
+  
   function create (file, callback) {
     var initSql = '';
     
@@ -197,11 +262,11 @@ var db = (function() {
         callback(err, rows);
       });
       */
-      
+
       sqlDb.all('SELECT query_time, forecast_time, (SELECT name FROM weather_icons WHERE id = (SELECT weather_icon_id FROM service_weather_codes WHERE service_weather_codes.service_id = forecasts.service_id AND service_weather_codes.weather_code = forecasts.weather_code)) AS weather_icon_name, temp, wind_speed, wind_dir FROM forecasts WHERE service_id = ? AND location_id = ? AND forecast_time BETWEEN ? AND ?',
         serviceId, locationId, startTime, endTime,
         function (err, rows) {
-          callback(err, rows);
+          callback(err, generateResults(rows));
         }
       );
     },
