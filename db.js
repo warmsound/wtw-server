@@ -50,19 +50,19 @@ var db = (function() {
   // times (typically displayed on X-axis). aheadTimes is sorted array of
   // differences between forecast and query times, longest first (typically
   // displayed on Y-axis). forecasts is sparse 2D array of forecasts.
-  function generateResults (rows)
+  function generateResults (observations, forecasts)
   {
     var results = { forecastTimes: [], aheadTimes: [], forecasts: [] }; 
     var uniqueForecastTimes = {}, uniqueAheadTimes = {};
     var forecastTimeIndices = {}, aheadTimeIndices = {};
     var forecastTimeIndex, aheadTimeIndex;
-    var forecastTime, queryTime, aheadTime;
+    var forecastTime, queryTime, aheadTime, observationTime;
     var i, j;
     
-    // 1st pass: determine unique forecast and ahead times
-    for (i = 0; i < rows.length; ++i) {
-      forecastTime = rows[i].forecast_time;
-      queryTime = rows[i].query_time;
+    // Forecasts (1st pass): determine unique forecast and ahead times
+    for (i = 0; i < forecasts.length; ++i) {
+      forecastTime = forecasts[i].forecast_time;
+      queryTime = forecasts[i].query_time;
             
       aheadTime = ((new Date(forecastTime)).getTime() - (new Date(queryTime)).getTime());
       aheadTime /= (1000 * 60 * 60); // Convert ms to hrs
@@ -70,6 +70,9 @@ var db = (function() {
       uniqueAheadTimes[aheadTime] = true;
       uniqueForecastTimes[forecastTime] = true;
     }
+    
+    // Add 0 ahead time for observations
+    uniqueAheadTimes[0] = true;
     
     // Sort unique forecast and ahead times, and assign to results
     results.forecastTimes = Object.keys(uniqueForecastTimes).sort();
@@ -95,17 +98,27 @@ var db = (function() {
       }
     }
     
-    // 2nd pass: insert forecast into appropriate slot in 2D forecasts array
-    for (i = 0; i < rows.length; ++i) {
-      forecastTime = rows[i].forecast_time;
-      queryTime = rows[i].query_time;
+    // Forecasts (2nd pass): insert forecast into appropriate slot in 2D forecasts array
+    for (i = 0; i < forecasts.length; ++i) {
+      forecastTime = forecasts[i].forecast_time;
+      queryTime = forecasts[i].query_time;
       
       aheadTime = ((new Date(forecastTime)).getTime() - (new Date(queryTime)).getTime());
       aheadTime /= (1000 * 60 * 60); // Convert ms to hrs
       
       forecastTimeIndex = forecastTimeIndices[forecastTime];
       aheadTimeIndex = aheadTimeIndices[aheadTime];      
-      results.forecasts[forecastTimeIndex][aheadTimeIndex] = rows[i];
+      results.forecasts[forecastTimeIndex][aheadTimeIndex] = forecasts[i];
+    }
+    
+    // Add observations at aheadTimeIndex = 0 for any forecast times that match
+    for (i = 0; i < observations.length; ++i) {
+      observationTime = observations[i].observation_time;
+      
+      if (forecastTimeIndices.hasOwnProperty(observationTime)) {
+        forecastTimeIndex = forecastTimeIndices[observationTime];
+        results.forecasts[forecastTimeIndex][0] = observations[i];
+      }
     }
     
     return results;    
@@ -262,13 +275,25 @@ var db = (function() {
         callback(err, rows);
       });
       */
+      
+      sqlDb.serialize(function () {
+        var observations = [], forecasts = [];
+        
+        sqlDb.all('SELECT query_time, observation_time, (SELECT name FROM weather_icons WHERE id = (SELECT weather_icon_id FROM service_weather_codes WHERE service_weather_codes.service_id = observations.service_id AND service_weather_codes.weather_code = observations.weather_code)) AS weather_icon_name, temp, wind_speed, wind_dir FROM observations WHERE service_id = ? AND location_id = ? AND observation_time BETWEEN ? AND ?',
+          serviceId, locationId, startTime, endTime,
+          function (err, rows) {
+            observations = rows;
+          }
+        );
 
-      sqlDb.all('SELECT query_time, forecast_time, (SELECT name FROM weather_icons WHERE id = (SELECT weather_icon_id FROM service_weather_codes WHERE service_weather_codes.service_id = forecasts.service_id AND service_weather_codes.weather_code = forecasts.weather_code)) AS weather_icon_name, temp, wind_speed, wind_dir FROM forecasts WHERE service_id = ? AND location_id = ? AND forecast_time BETWEEN ? AND ?',
-        serviceId, locationId, startTime, endTime,
-        function (err, rows) {
-          callback(err, generateResults(rows));
-        }
-      );
+        sqlDb.all('SELECT query_time, forecast_time, (SELECT name FROM weather_icons WHERE id = (SELECT weather_icon_id FROM service_weather_codes WHERE service_weather_codes.service_id = forecasts.service_id AND service_weather_codes.weather_code = forecasts.weather_code)) AS weather_icon_name, temp, wind_speed, wind_dir FROM forecasts WHERE service_id = ? AND location_id = ? AND forecast_time BETWEEN ? AND ?',
+          serviceId, locationId, startTime, endTime,
+          function (err, rows) {
+            forecasts = rows;
+            callback(err, generateResults(observations, forecasts));
+          }
+        );
+      });      
     },
     
     addForecast: function (forecast) {
