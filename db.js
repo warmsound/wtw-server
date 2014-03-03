@@ -76,8 +76,8 @@ var db = (function() {
     
     // Sort unique forecast and ahead times, and assign to results
     results.forecastTimes = Object.keys(uniqueForecastTimes).sort();
-    results.aheadTimes = Object.keys(uniqueAheadTimes).sort(function numericalSortDescending (a, b) {
-      return b - a;
+    results.aheadTimes = Object.keys(uniqueAheadTimes).sort(function numericalSortAscending (a, b) {
+      return a - b;
     });
     
     // Build forecast and ahead time indices: allow reverse look-up
