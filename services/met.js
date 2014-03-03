@@ -4,9 +4,11 @@ var met = (function () {
 	
 	var name = "met";
 	var desc = "MET Office DataPoint API";
-	var queryFreqHrs = 1;
+	var queryForecastFreqHrs = 1;
 	var forecastFreqHrs = 3;
 	var forecastAheadHrs = 72;
+	var queryObservationFreqHrs = 24;
+	var observationFreqHrs = 1;
 	
 	var weatherCodes = {
 		"0": { weatherIcon: "wi-night-clear" },
@@ -42,23 +44,30 @@ var met = (function () {
 		"30": { weatherIcon: "wi-lightning" } // Thunder
 	};
 	
-	var url = "http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/json/3672?res=3hourly&key=";
+	var forecastUrl = "http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/json/3672?res=3hourly&key=";
+	var observationUrl = "http://datapoint.metoffice.gov.uk/public/data/val/wxobs/all/json/3672?res=hourly&key=";
 	var apiKey = "c5ff98ca-c067-4506-b77e-ed968997548a";
-	var firstIntervalObject = null;
-	var intervalObject = null;
+	var firstForecastIntervalObject = null;
+	var forecastIntervalObject = null;
+	var observationIntervalObject = null;
 	var forecastCallback = null;
+	var observationCallback = null;
 	var service = null;
 	
-	function getQueryUrl () {
-		return url + apiKey;
+	function getForecastQueryUrl () {
+		return forecastUrl + apiKey;
 	};
+	
+	function getObservationQueryUrl () {
+    return observationUrl + apiKey;
+  };
 	
 	// If it's 3.33pm now, return the number of milliseconds until 6pm,
 	// assuming we're querying every 3 hours. Add a small delay to avoid
 	// sending query when every other application is sending a query!
 	function getFirstIntervalDelay () {
 		var now = Date.now();
-		var queryInterval = queryFreqHrs * 60 * 60 * 1000;
+		var queryInterval = queryForecastFreqHrs * 60 * 60 * 1000;
 		var sinceLastInterval = now % queryInterval;
 		return (queryInterval - sinceLastInterval + (config.queryDelaySecs * 1000));		
 	};
@@ -76,16 +85,25 @@ var met = (function () {
 		return forecastTime.toJSON();
 	}
 	
-	function doQuery (location) {
+	function doForecastQuery (location) {
 		var xhr = new XMLHttpRequest;
-		xhr.open("GET", getQueryUrl());
+		xhr.open("GET", getForecastQueryUrl());
 		xhr.onload = function () {
-			parseQueryResult(location, this.responseText);
+			parseForecastQueryResult(location, this.responseText);
 		};
 		xhr.send();
 	};
 	
-	function parseQueryResult (location, result) {
+	function doObservationQuery (location) {
+    var xhr = new XMLHttpRequest;
+    xhr.open("GET", getObservationQueryUrl());
+    xhr.onload = function () {
+      parseObservationQueryResult(location, this.responseText);
+    };
+    xhr.send();
+  };
+	
+	function parseForecastQueryResult (location, result) {
 		var res = JSON.parse(result);
 		try {
 			var day, days = res.SiteRep.DV.Location.Period;
@@ -113,44 +131,83 @@ var met = (function () {
 		}				
 	};
 	
+	function parseObservationQueryResult (location, result) {
+    var res = JSON.parse(result);
+    try {
+      var day, days = res.SiteRep.DV.Location.Period;
+      var observation, observations;
+      var ob;
+      
+      for (day = 0; day < days.length; ++day) {
+        observations = days[day].Rep;
+        for (observation = 0; observation < observations.length; ++observation) {
+          ob = {
+            locationId: location.id,
+            serviceId: service.id,
+            queryTime: getQueryTime(res.SiteRep.DV.dataDate),
+            observationTime: getForecastTime(days[day].value, observations[observation].$),
+            weatherCode: parseInt(observations[observation].W),
+            temp: parseInt(observations[observation].T),
+            windSpeed: observations[observation].W,
+            windDir: observations[observation].D
+          };
+          observationCallback(ob);
+        }
+      }
+    } catch (err) {
+      console.log("Error handling response from service: " + service.name);
+    }       
+  };
+	
 	return {
 		id: 0, // Read from DB
 		name: name,
 		desc: desc,
-		url: url,
-		apiKey: apiKey,		
-		queryFreqHrs: queryFreqHrs,
+		queryForecastFreqHrs: queryForecastFreqHrs,
 		forecastFreqHrs: forecastFreqHrs,
 		forecastAheadHrs: forecastAheadHrs,
 		
-		start: function (locations, addForecastCallback) {
+		start: function (locations, addForecastCallback, addObservationCallback) {
 			forecastCallback = addForecastCallback;
+			observationCallback = addObservationCallback;
 			service = this;
 			
 			// TODO: Query site list
 			
-			function queryLocations () {
+			function queryForecastLocations () {
 				var i;
 				for (i = 0; i < locations.length; ++i) {
-					doQuery(locations[i]);
+					doForecastQuery(locations[i]);
 				}
 			};
 			
+			function queryObservationLocations () {
+        var i;
+        for (i = 0; i < locations.length; ++i) {
+          doObservationQuery(locations[i]);
+        }
+      };
+			
 			// Query immediately, then on every interval
-			queryLocations(); // Immediate
-			firstIntervalDelay = new Date;
-			firstIntervalObject = setTimeout(function () {
-				queryLocations(); // First interval
-				intervalObject = setInterval(queryLocations, queryFreqHrs * 60 * 60 * 1000); // Subsequent intervals
-			}, getFirstIntervalDelay());						
+			queryForecastLocations(); // Immediate
+			firstForecastIntervalObject = setTimeout(function () {
+				queryForecastLocations(); // First interval
+				forecastIntervalObject = setInterval(queryForecastLocations, queryForecastFreqHrs * 60 * 60 * 1000); // Subsequent intervals
+			}, getFirstIntervalDelay());
+			
+			queryObservationLocations(); // Immediate
+			observationIntervalOjbect = setTimeout(function () {
+			  queryObservationLocations();
+			}, queryObservationFreqHrs * 60 * 60 * 1000); // Subsequent intervals
+			
 		},
 		
 		stop: function () {
-			if (firstIntervalObject) {
-				clearInterval(firstIntervalObject);
+			if (firstForecastIntervalObject) {
+				clearInterval(firstForecastIntervalObject);
 				
-				if (intervalObject) {
-					clearInterval(intervalObject);
+				if (forecastIntervalObject) {
+					clearInterval(forecastIntervalObject);
 				}				
 			}			
 		},

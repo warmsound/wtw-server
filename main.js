@@ -48,7 +48,7 @@ var wtw = (function () {
 			function (err) {
 				// Start service
 				console.log("Starting service: " + service.name);
-				service.start(locations, db.addForecast);
+				service.start(locations, db.addForecast, db.addObservation);
 				services.push(service);
 				callback(err);
 			});

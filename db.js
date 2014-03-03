@@ -46,49 +46,51 @@ var db = (function() {
     statement.finalize(function (err) { callback(err); });
   };
   
+  // Generate results table. forecastTimes is sorted array of unique forecast
+  // times (typically displayed on X-axis). aheadTimes is sorted array of
+  // differences between forecast and query times, longest first (typically
+  // displayed on Y-axis). forecasts is sparse 2D array of forecasts.
   function generateResults (rows)
   {
-    var results = { forecastTimes: [], agoTimes: [], forecasts: [] }; 
-    var uniqueForecastTimes = {}, uniqueAgoTimes = {};
-    var forecastTimeIndices = {}, agoTimeIndices = {};
-    var forecastTimeIndex, agoTimeIndex;
-    var forecastTime, queryTime, agoTime;
+    var results = { forecastTimes: [], aheadTimes: [], forecasts: [] }; 
+    var uniqueForecastTimes = {}, uniqueAheadTimes = {};
+    var forecastTimeIndices = {}, aheadTimeIndices = {};
+    var forecastTimeIndex, aheadTimeIndex;
+    var forecastTime, queryTime, aheadTime;
     var i, j;
     
-    // 1st pass: determine unique forecast and ago times
+    // 1st pass: determine unique forecast and ahead times
     for (i = 0; i < rows.length; ++i) {
       forecastTime = rows[i].forecast_time;
       queryTime = rows[i].query_time;
             
-      agoTime = ((new Date(forecastTime)).getTime() - (new Date(queryTime)).getTime());
-      agoTime /= (1000 * 60 * 60); // Convert ms to hrs
+      aheadTime = ((new Date(forecastTime)).getTime() - (new Date(queryTime)).getTime());
+      aheadTime /= (1000 * 60 * 60); // Convert ms to hrs
       
-      if (agoTime >= 0) {
-        uniqueAgoTimes[agoTime] = true;
-        uniqueForecastTimes[forecastTime] = true;
-      }
+      uniqueAheadTimes[aheadTime] = true;
+      uniqueForecastTimes[forecastTime] = true;
     }
     
-    // Sort unique forecast and ago times, and assign to results
+    // Sort unique forecast and ahead times, and assign to results
     results.forecastTimes = Object.keys(uniqueForecastTimes).sort();
-    results.agoTimes = Object.keys(uniqueAgoTimes).sort(function numericalSortDescending (a, b) {
+    results.aheadTimes = Object.keys(uniqueAheadTimes).sort(function numericalSortDescending (a, b) {
       return b - a;
     });
     
-    // Build forecast and ago time indices: allow reverse look-up
+    // Build forecast and ahead time indices: allow reverse look-up
     for (i = 0; i < results.forecastTimes.length; ++i) {
       forecastTimeIndices[results.forecastTimes[i]] = i;
     }
     
-    for (i = 0; i < results.agoTimes.length; ++i) {
-      agoTimeIndices[results.agoTimes[i]] = i;
+    for (i = 0; i < results.aheadTimes.length; ++i) {
+      aheadTimeIndices[results.aheadTimes[i]] = i;
     }
     
     // Initialise 2D forecasts array
     for (i = 0; i < results.forecastTimes.length; ++i) {
       results.forecasts[i] = [];
       
-      for (j = 0; j < results.agoTimes.length; ++ j) {
+      for (j = 0; j < results.aheadTimes.length; ++ j) {
         results.forecasts[i][j] = {};
       }
     }
@@ -98,14 +100,12 @@ var db = (function() {
       forecastTime = rows[i].forecast_time;
       queryTime = rows[i].query_time;
       
-      agoTime = ((new Date(forecastTime)).getTime() - (new Date(queryTime)).getTime());
-      agoTime /= (1000 * 60 * 60); // Convert ms to hrs
+      aheadTime = ((new Date(forecastTime)).getTime() - (new Date(queryTime)).getTime());
+      aheadTime /= (1000 * 60 * 60); // Convert ms to hrs
       
-      if (agoTime >= 0) {
-        forecastTimeIndex = forecastTimeIndices[forecastTime];
-        agoTimeIndex = agoTimeIndices[agoTime];      
-        results.forecasts[forecastTimeIndex][agoTimeIndex] = rows[i];
-      }
+      forecastTimeIndex = forecastTimeIndices[forecastTime];
+      aheadTimeIndex = aheadTimeIndices[aheadTime];      
+      results.forecasts[forecastTimeIndex][aheadTimeIndex] = rows[i];
     }
     
     return results;    
@@ -188,7 +188,7 @@ var db = (function() {
             // Insert new row into services table
             insertService: function (callback) {
               sqlDb.run('INSERT INTO services (name, desc, query_freq_hrs, forecast_freq_hrs, forecast_ahead_hrs) VALUES (?, ?, ?, ?, ?)',
-                service.name, service.desc, service.queryFreqHrs, service.forecastFreqHrs, service.forecastAheadHrs,
+                service.name, service.desc, service.queryForecastFreqHrs, service.forecastFreqHrs, service.forecastAheadHrs,
                 function (err, row) {
                   callback(err);
                 }
@@ -272,8 +272,15 @@ var db = (function() {
     },
     
     addForecast: function (forecast) {
-      sqlDb.run('INSERT INTO forecasts (location_id, service_id, query_time, forecast_time, weather_code, temp, wind_speed, wind_dir) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        forecast.locationId, forecast.serviceId, forecast.queryTime, forecast.forecastTime, forecast.weatherCode, forecast.temp, forecast.windSpeed, forecast.windDir);
+      if (forecast.queryTime < forecast.forecastTime) {
+        sqlDb.run('INSERT INTO forecasts (location_id, service_id, query_time, forecast_time, weather_code, temp, wind_speed, wind_dir) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          forecast.locationId, forecast.serviceId, forecast.queryTime, forecast.forecastTime, forecast.weatherCode, forecast.temp, forecast.windSpeed, forecast.windDir);
+      }
+    },
+    
+    addObservation: function (observation) {
+      sqlDb.run('INSERT INTO observations (location_id, service_id, query_time, observation_time, weather_code, temp, wind_speed, wind_dir) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          observation.locationId, observation.serviceId, observation.queryTime, observation.observationTime, observation.weatherCode, observation.temp, observation.windSpeed, observation.windDir);
     }
   };
 }());

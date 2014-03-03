@@ -23,6 +23,20 @@ CREATE TABLE [locations] (
 CREATE UNIQUE INDEX [lat_long] ON [locations] ([lat], [long]);
 
 
+CREATE TABLE [observations] (
+  [id] INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, 
+  [location_id] INTEGER NOT NULL CONSTRAINT [location_id] REFERENCES [locations]([id]), 
+  [service_id] INTEGER NOT NULL CONSTRAINT [service_id] REFERENCES [services]([id]), 
+  [query_time] TEXT(19) NOT NULL, 
+  [observation_time] TEXT(19) NOT NULL, 
+  [weather_code] INTEGER NOT NULL CONSTRAINT [weather_code_id] REFERENCES [service_weather_codes]([id]), 
+  [temp] INTEGER, 
+  [temp_hi] INTEGER, 
+  [temp_lo] INTEGER, 
+  [wind_speed] INTEGER, 
+  [wind_dir] CHAR(3));
+
+
 CREATE TABLE [services] (
   [id] INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, 
   [name] TEXT(10) NOT NULL, 
