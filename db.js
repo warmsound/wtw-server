@@ -52,7 +52,8 @@ var db = (function() {
   // displayed on Y-axis). forecasts is sparse 2D array of forecasts.
   function generateResults (observations, forecasts)
   {
-    var results = { forecastTimes: [], aheadTimes: [], forecasts: [] }; 
+    // TODO: Look up forecastFreq in DB 
+    var results = { forecastFreq: 3, forecastTimes: [], aheadTimes: [], forecasts: [] }; 
     var uniqueForecastTimes = {}, uniqueAheadTimes = {};
     var forecastTimeIndices = {}, aheadTimeIndices = {};
     var forecastTimeIndex, aheadTimeIndex;
