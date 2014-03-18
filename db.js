@@ -4,7 +4,8 @@ var db = (function() {
   var sqlite3 = require('sqlite3').verbose();
   var sqlDb = null;
   
-  var sql = require('sql')
+  /*
+  var sql = require('sql');
   var weather_icons = sql.define({
     name: 'weather_icons',
     columns: ['id', 'name']
@@ -17,6 +18,7 @@ var db = (function() {
     name: 'forecasts',
     columns: ['id', 'location_id', 'service_id', 'query_time', 'forecast_time', 'weather_code', 'temp', 'temp_hi', 'temp_lo', 'wind_speed', 'wind_dir']
   });
+  */
   
   var wi = require('./weather-icons');
   
@@ -50,15 +52,22 @@ var db = (function() {
   // times (typically displayed on X-axis). aheadTimes is sorted array of
   // differences between forecast and query times, longest first (typically
   // displayed on Y-axis). forecasts is sparse 2D array of forecasts.
-  function generateResults (observations, forecasts)
+  function generateResults (service, location, observations, forecasts)
   {
     // TODO: Look up forecastFreq in DB 
-    var results = { forecastFreq: 3, forecastTimes: [], aheadTimes: [], forecasts: [] }; 
+    var results = { service: {}, location: {}, forecastTimes: [], aheadTimes: [], forecasts: [] }; 
     var uniqueForecastTimes = {}, uniqueAheadTimes = {};
     var forecastTimeIndices = {}, aheadTimeIndices = {};
     var forecastTimeIndex, aheadTimeIndex;
     var forecastTime, queryTime, aheadTime, observationTime;
     var i, j;
+    
+    results.service.name = service.desc;
+    results.service.forecastFreq = service.forecast_freq_hrs;
+    
+    results.location.name = location.name;
+    results.location.lat = location.lat;
+    results.location.long = location.long;
     
     // Forecasts (1st pass): determine unique forecast and ahead times
     for (i = 0; i < forecasts.length; ++i) {
@@ -278,7 +287,16 @@ var db = (function() {
       */
       
       sqlDb.serialize(function () {
+        var service, location;
         var observations = [], forecasts = [];
+        
+        sqlDb.get('SELECT desc, forecast_freq_hrs FROM services WHERE id = ?', serviceId, function (err, row) {
+          service = row;
+        });
+        
+        sqlDb.get('SELECT name, lat, long FROM locations WHERE id = ?', locationId, function (err, row) {
+          location = row;
+        });
         
         sqlDb.all('SELECT query_time, observation_time, (SELECT name FROM weather_icons WHERE id = (SELECT weather_icon_id FROM service_weather_codes WHERE service_weather_codes.service_id = observations.service_id AND service_weather_codes.weather_code = observations.weather_code)) AS weather_icon_name, temp, wind_speed, wind_dir FROM observations WHERE service_id = ? AND location_id = ? AND observation_time BETWEEN ? AND ?',
           serviceId, locationId, startTime, endTime,
@@ -291,7 +309,7 @@ var db = (function() {
           serviceId, locationId, startTime, endTime,
           function (err, rows) {
             forecasts = rows;
-            callback(err, generateResults(observations, forecasts));
+            callback(err, generateResults(service, location, observations, forecasts));
           }
         );
       });      
