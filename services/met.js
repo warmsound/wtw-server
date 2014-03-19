@@ -1,3 +1,5 @@
+"use strict";
+
 var met = (function () {
 	var config = require("../config");
 	var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
@@ -7,8 +9,7 @@ var met = (function () {
 	var queryForecastFreqHrs = 1;
 	var forecastFreqHrs = 3;
 	var forecastAheadHrs = 72;
-	var queryObservationFreqHrs = 24;
-	var observationFreqHrs = 1;
+	var queryObservationFreqHrs = 1;
 	
 	var weatherCodes = {
 		"0": { weatherIcon: "wi-night-clear" },
@@ -196,7 +197,7 @@ var met = (function () {
 			}, getFirstIntervalDelay());
 			
 			queryObservationLocations(); // Immediate
-			observationIntervalOjbect = setTimeout(function () {
+			observationIntervalObject = setTimeout(function () {
 			  queryObservationLocations();
 			}, queryObservationFreqHrs * 60 * 60 * 1000); // Subsequent intervals
 			
@@ -209,7 +210,12 @@ var met = (function () {
 				if (forecastIntervalObject) {
 					clearInterval(forecastIntervalObject);
 				}				
-			}			
+			}
+			
+			if (observationIntervalObject) {
+			  clearInterval(observationIntervalObject);
+			}
+		  
 		},
 		
 		getWeatherCodes: function () {
