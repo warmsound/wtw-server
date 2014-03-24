@@ -9,7 +9,14 @@ var wtw = (function () {
 	var services = [];
 	
 	function configureLogging () {
-	  winston.add(winston.transports.File, { filename: config.logFile });
+	  var loggingOptions = { filename: config.logFile };
+	  
+	  // "info" is default log level in winston
+	  if (config.verboseLogging) {
+	    loggingOptions.level = "verbose";
+    }
+	  
+	  winston.add(winston.transports.File, loggingOptions);
 	};
 	
 	function loadLocations(callback) {		
@@ -52,7 +59,7 @@ var wtw = (function () {
 			],
 			function (err) {
 				// Start service
-				winston.info("Starting service: " + service.name);
+				winston.info("Starting service: %s", service.name);
 				service.start(locations, db.addForecast, db.addObservation);
 				services.push(service);
 				callback(err);

@@ -93,6 +93,7 @@ var met = (function () {
 		xhr.onload = function () {
 			parseForecastQueryResult(location, this.responseText);
 		};
+		winston.info("Sending forecast query for service: %s", service.name);
 		xhr.send();
 	};
 	
@@ -102,6 +103,7 @@ var met = (function () {
     xhr.onload = function () {
       parseObservationQueryResult(location, this.responseText);
     };
+    winston.info("Sending observation query for service: %s", service.name);
     xhr.send();
   };
 	
@@ -111,6 +113,9 @@ var met = (function () {
 			var day, days = res.SiteRep.DV.Location.Period;
 			var forecast, forecasts;
 			var fc;
+
+			winston.info("Received forecast response for service: %s", service.name);
+			winston.verbose("Forecast response: %j", result);
 			
 			for (day = 0; day < days.length; ++day) {
 				forecasts = days[day].Rep;
@@ -129,7 +134,7 @@ var met = (function () {
 				}
 			}
 		} catch (err) {
-		  winston.error("Error handling response from service: " + service.name);
+		  winston.error("The following error was thrown when handling a forecast response from service %s: %s", service.name, err.message, result);
 		}				
 	};
 	
@@ -139,6 +144,9 @@ var met = (function () {
       var day, days = res.SiteRep.DV.Location.Period;
       var observation, observations;
       var ob;
+      
+      winston.info("Received observation response for service: %s", service.name);
+      winston.verbose("Observation response: %j", result);
       
       for (day = 0; day < days.length; ++day) {
         observations = days[day].Rep;
@@ -157,7 +165,7 @@ var met = (function () {
         }
       }
     } catch (err) {
-      winston.error("Error handling response from service: " + service.name);
+      winston.error("The following error was thrown when handling an observation response from service %s: %s", service.name, err.message, result);
     }       
   };
 	

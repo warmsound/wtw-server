@@ -1,6 +1,7 @@
 var config = {
 	dbFile: "wtw.db",
 	logFile: "wtw.log",
+	verboseLogging: true,
 	services: [
 	    { name: "met" }
 	    ],

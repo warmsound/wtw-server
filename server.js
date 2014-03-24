@@ -55,7 +55,7 @@ var server = (function () {
 			  res.end("");
 			});
 			
-			winston.info("Starting server on port: " + config.port);
+			winston.info("Starting server on port: %d", config.port);
 			app.listen(config.port);
 		}
 	};
