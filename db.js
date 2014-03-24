@@ -2,6 +2,7 @@ var db = (function() {
   var fs = require('fs');
   var async = require('async');
   var sqlite3 = require('sqlite3').verbose();
+  var winston = require('winston');
   var sqlDb = null;
   
   /*
@@ -24,7 +25,7 @@ var db = (function() {
   
   function getWeatherIconIds (callback) {
     var weatherIconIds = {};
-    console.log('Reading weather icon IDs');
+    winston.info('Reading weather icon IDs');
     sqlDb.each('SELECT * from weather_icons',
       function (err, row) {
         weatherIconIds[row.name] = row.id;
@@ -37,7 +38,7 @@ var db = (function() {
   
   // Database should already be in serial mode
   function populateWeatherIcons (callback) {
-    console.log('Populating weather icons');
+    winston.info('Populating weather icons');
     
     var icons = wi.getIconNames();
     var statement = sqlDb.prepare('INSERT INTO weather_icons (name) VALUES (?)');
@@ -136,7 +137,7 @@ var db = (function() {
   function create (file, callback) {
     var initSql = '';
     
-    console.log('Creating DB file: ' + file);
+    winston.info('Creating DB file: ' + file);
     sqlDb = new sqlite3.Database(file);
     
     initSql = fs.readFileSync('./init.sql', 'utf8');
@@ -167,7 +168,7 @@ var db = (function() {
       sqlDb.get('SELECT * FROM locations WHERE lat = ? AND long = ?', location.lat, location.long, function (err, row) {
         // Doesn't exist, so add
         if (row === undefined) {
-          console.log('Adding location: ' + location.name);
+          winston.info('Adding location: ' + location.name);
           // Ensure location is inserted before determining new row's ID
           async.series({
             // Insert new row into locations table
@@ -203,7 +204,7 @@ var db = (function() {
       sqlDb.get('SELECT * FROM services WHERE name = ?', service.name, function (err, row) {
         // Doesn't exist, so add
         if (row === undefined) {
-          console.log('Adding service: ' + service.name);
+          winston.info('Adding service: ' + service.name);
           
           // Ensure service is inserted before determining new row's ID
           async.series({
@@ -261,14 +262,14 @@ var db = (function() {
           service_weather_codes.service_id.equals(forecasts.service_id)
           .and(service_weather_codes.weather_code.equals(forecasts.weather_code))
         );
-      console.log(weatherIconIdForService.toQuery().text);
+      winston.info(weatherIconIdForService.toQuery().text);
       
       // SELECT name FROM weather_icons WHERE id = (weatherIconIdForService)
       var weatherIconNameForId = weather_icons
         .select(weather_icons.name)
         .from(weather_icons)
         .where(weather_icons.id.equals(weatherIconIdForService));
-      console.log(weatherIconNameForId.toQuery().text);
+      winston.info(weatherIconNameForId.toQuery().text);
       
       // SELECT query_time, forecast_time, (weatherIconNameForId) AS weather_icon_name, temp, wind_speed, wind_dir FROM forecasts WHERE service_id = ? AND location_id = ? AND forecast_time BETWEEN ? AND ?
       var forecastsWithWeatherIcon = forecasts
@@ -278,7 +279,7 @@ var db = (function() {
             .and(forecasts.location_id.equals(locationId))
             .and(forecasts.forecast_time.between(startTime).and(endTime))
         );
-      console.log(forecastsWithWeatherIcon.toQuery().text);
+      winston.info(forecastsWithWeatherIcon.toQuery().text);
       
       sqlDb.all(forecastsWithWeatherIcon.toQuery().text, function (err, rows) {
         callback(err, rows);

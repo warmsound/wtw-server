@@ -8,6 +8,7 @@
 		"xmlhttprequest": "1.6.x",
 		"async": "0.2.x",
 		"express": "3.0.x",
-		"sql": "0.35.*"
+		"sql": "0.35.*",
+		"winston": "0.7.x"
 	}
 }

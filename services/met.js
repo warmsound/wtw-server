@@ -1,6 +1,7 @@
 "use strict";
 
 var met = (function () {
+  var winston = require("winston");
 	var config = require("../config");
 	var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 	
@@ -128,7 +129,7 @@ var met = (function () {
 				}
 			}
 		} catch (err) {
-			console.log("Error handling response from service: " + service.name);
+		  winston.error("Error handling response from service: " + service.name);
 		}				
 	};
 	
@@ -156,7 +157,7 @@ var met = (function () {
         }
       }
     } catch (err) {
-      console.log("Error handling response from service: " + service.name);
+      winston.error("Error handling response from service: " + service.name);
     }       
   };
 	

@@ -1,11 +1,16 @@
 var wtw = (function () {
 	var async = require("async");
+	var winston = require("winston");
 	var config = require("./config");
 	var db = require("./db");
 	var server = require("./server");
 	
 	var locations = [];
 	var services = [];
+	
+	function configureLogging () {
+	  winston.add(winston.transports.File, { filename: config.logFile });
+	};
 	
 	function loadLocations(callback) {		
 		async.each(config.locations, function (location, callback) {
@@ -47,7 +52,7 @@ var wtw = (function () {
 			],
 			function (err) {
 				// Start service
-				console.log("Starting service: " + service.name);
+				winston.info("Starting service: " + service.name);
 				service.start(locations, db.addForecast, db.addObservation);
 				services.push(service);
 				callback(err);
@@ -59,6 +64,7 @@ var wtw = (function () {
 	
 	return {
 		init: function () {
+		  configureLogging();
 			async.series([
 			    function (callback) {
 			    	db.init(config.dbFile, function () { callback(); });

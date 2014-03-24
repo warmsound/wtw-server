@@ -1,5 +1,6 @@
 var server = (function () {
 	var express = require("express");
+	var winston = require("winston");
 	var config = require("./config");
 	var json = require("./resources/json");
 	var app = null;
@@ -54,7 +55,7 @@ var server = (function () {
 			  res.end("");
 			});
 			
-			console.log("Starting server on port: " + config.port);
+			winston.info("Starting server on port: " + config.port);
 			app.listen(config.port);
 		}
 	};
