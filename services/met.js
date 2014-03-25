@@ -50,8 +50,8 @@ var met = (function () {
 	var apiKey = "c5ff98ca-c067-4506-b77e-ed968997548a";
 	var firstForecastTimeoutObject = null;
 	var forecastIntervalObject = null;
-	var forecastCallback = null;
-	var observationCallback = null;
+	var forecastsCallback = null;
+	var observationsCallback = null;
 	var service = null;
 	
 	function getForecastQueryUrl () {
@@ -110,7 +110,7 @@ var met = (function () {
 		try {
 			var day, days = res.SiteRep.DV.Location.Period;
 			var forecast, forecasts;
-			var fc;
+			var rows = [];
 
 			winston.info("Received forecast response for service: %s", service.name);
 			winston.verbose("Forecast response: %j", result);
@@ -118,7 +118,7 @@ var met = (function () {
 			for (day = 0; day < days.length; ++day) {
 				forecasts = days[day].Rep;
 				for (forecast = 0; forecast < forecasts.length; ++forecast) {
-					fc = {
+				  rows.push({
 						locationId: location.id,
 						serviceId: service.id,
 						queryTime: getQueryTime(res.SiteRep.DV.dataDate),
@@ -127,10 +127,11 @@ var met = (function () {
 						temp: parseInt(forecasts[forecast].T),
 						windSpeed: forecasts[forecast].W,
 						windDir: forecasts[forecast].D
-					};
-					forecastCallback(fc);
+					});
 				}
 			}
+			
+			forecastsCallback(rows);
 		} catch (err) {
 		  winston.error("The following error was thrown when handling a forecast response from service %s: %s", service.name, err.message, result);
 		}				
@@ -141,7 +142,7 @@ var met = (function () {
     try {
       var day, days = res.SiteRep.DV.Location.Period;
       var observation, observations;
-      var ob;
+      var rows = [];
       
       winston.info("Received observation response for service: %s", service.name);
       winston.verbose("Observation response: %j", result);
@@ -149,7 +150,7 @@ var met = (function () {
       for (day = 0; day < days.length; ++day) {
         observations = days[day].Rep;
         for (observation = 0; observation < observations.length; ++observation) {
-          ob = {
+          rows.push({
             locationId: location.id,
             serviceId: service.id,
             queryTime: getQueryTime(res.SiteRep.DV.dataDate),
@@ -158,10 +159,11 @@ var met = (function () {
             temp: parseInt(observations[observation].T),
             windSpeed: observations[observation].W,
             windDir: observations[observation].D
-          };
-          observationCallback(ob);
+          });
         }
       }
+      
+      observationsCallback(rows);
     } catch (err) {
       winston.error("The following error was thrown when handling an observation response from service %s: %s", service.name, err.message, result);
     }       
@@ -175,9 +177,9 @@ var met = (function () {
 		forecastFreqHrs: forecastFreqHrs,
 		forecastAheadHrs: forecastAheadHrs,
 		
-		start: function (locations, addForecastCallback, addObservationCallback) {
-			forecastCallback = addForecastCallback;
-			observationCallback = addObservationCallback;
+		start: function (locations, addForecastsCallback, addObservationsCallback) {
+			forecastsCallback = addForecastsCallback;
+			observationsCallback = addObservationsCallback;
 			service = this;
 			
 			// TODO: Query site list

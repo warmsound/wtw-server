@@ -315,16 +315,30 @@ var db = (function() {
       });      
     },
     
-    addForecast: function (forecast) {
-      if (forecast.queryTime < forecast.forecastTime) {
-        sqlDb.run('INSERT INTO forecasts (location_id, service_id, query_time, forecast_time, weather_code, temp, wind_speed, wind_dir) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          forecast.locationId, forecast.serviceId, forecast.queryTime, forecast.forecastTime, forecast.weatherCode, forecast.temp, forecast.windSpeed, forecast.windDir);
+    addForecasts: function (forecasts) {
+      var statement = sqlDb.prepare('INSERT INTO forecasts (location_id, service_id, query_time, forecast_time, weather_code, temp, wind_speed, wind_dir) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+      var i, fc;
+      
+      for (i = 0; i < forecasts.length; ++i) {
+        fc = forecasts[i];
+        if (fc.queryTime < fc.forecastTime) {
+          statement.run(fc.locationId, fc.serviceId, fc.queryTime, fc.forecastTime, fc.weatherCode, fc.temp, fc.windSpeed, fc.windDir);
+        }
       }
+      
+      statement.finalize();   
     },
     
-    addObservation: function (observation) {
-      sqlDb.run('INSERT INTO observations (location_id, service_id, query_time, observation_time, weather_code, temp, wind_speed, wind_dir) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          observation.locationId, observation.serviceId, observation.queryTime, observation.observationTime, observation.weatherCode, observation.temp, observation.windSpeed, observation.windDir);
+    addObservations: function (observations) {
+      var statement = sqlDb.prepare('INSERT INTO observations (location_id, service_id, query_time, observation_time, weather_code, temp, wind_speed, wind_dir) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+      var i, ob;
+      
+      for (i = 0; i < observations.length; ++i) {
+        ob = observations[i];
+        statement.run(ob.locationId, ob.serviceId, ob.queryTime, ob.observationTime, ob.weatherCode, ob.temp, ob.windSpeed, ob.windDir);
+      }
+      
+      statement.finalize();      
     }
   };
 }());

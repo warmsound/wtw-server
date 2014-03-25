@@ -60,7 +60,7 @@ var wtw = (function () {
 			function (err) {
 				// Start service
 				winston.info("Starting service: %s", service.name);
-				service.start(locations, db.addForecast, db.addObservation);
+				service.start(locations, db.addForecasts, db.addObservations);
 				services.push(service);
 				callback(err);
 			});
