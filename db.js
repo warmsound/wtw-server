@@ -315,30 +315,51 @@ var db = (function() {
       });      
     },
     
-    addForecasts: function (forecasts) {
+    addForecasts: function (locationId, serviceId, forecasts) {
       var statement = sqlDb.prepare('INSERT INTO forecasts (location_id, service_id, query_time, forecast_time, weather_code, temp, wind_speed, wind_dir) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
       var i, fc;
       
       for (i = 0; i < forecasts.length; ++i) {
         fc = forecasts[i];
-        if (fc.queryTime < fc.forecastTime) {
-          statement.run(fc.locationId, fc.serviceId, fc.queryTime, fc.forecastTime, fc.weatherCode, fc.temp, fc.windSpeed, fc.windDir);
+        if (new Date(fc.queryTime) < new Date(fc.forecastTime)) {
+          statement.run(locationId, serviceId, fc.queryTime, fc.forecastTime, fc.weatherCode, fc.temp, fc.windSpeed, fc.windDir);
         }
       }
       
       statement.finalize();   
     },
     
-    addObservations: function (observations) {
-      var statement = sqlDb.prepare('INSERT INTO observations (location_id, service_id, query_time, observation_time, weather_code, temp, wind_speed, wind_dir) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-      var i, ob;
+    // Ensure that only new observations are written to the database
+    addObservations: function (locationId, serviceId, observations) {
+      var lastObservationTime; 
       
-      for (i = 0; i < observations.length; ++i) {
-        ob = observations[i];
-        statement.run(ob.locationId, ob.serviceId, ob.queryTime, ob.observationTime, ob.weatherCode, ob.temp, ob.windSpeed, ob.windDir);
-      }
-      
-      statement.finalize();      
+      async.series([
+        function(callback) {
+          // Determine most recent observation time
+          sqlDb.get('SELECT MAX(observation_time) AS last_observation_time FROM observations WHERE location_id = ? AND service_id = ?',
+            locationId, serviceId,
+            function (err, row) {
+              lastObservationTime = row.last_observation_time;
+              callback(err);
+          });
+        },
+        
+        function(callback) {        
+          var statement = sqlDb.prepare('INSERT INTO observations (location_id, service_id, query_time, observation_time, weather_code, temp, wind_speed, wind_dir) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+          var i, ob;
+          
+          for (i = 0; i < observations.length; ++i) {
+            ob = observations[i];
+            
+            // Do not add duplicate observations
+            if (new Date(ob.observationTime) > new Date(lastObservationTime)) {
+              statement.run(locationId, serviceId, ob.queryTime, ob.observationTime, ob.weatherCode, ob.temp, ob.windSpeed, ob.windDir);
+            }
+          }
+          
+          statement.finalize(function() { callback(); });
+        }
+      ]);
     }
   };
 }());

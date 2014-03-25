@@ -119,8 +119,6 @@ var met = (function () {
 				forecasts = days[day].Rep;
 				for (forecast = 0; forecast < forecasts.length; ++forecast) {
 				  rows.push({
-						locationId: location.id,
-						serviceId: service.id,
 						queryTime: getQueryTime(res.SiteRep.DV.dataDate),
 						forecastTime: getForecastTime(days[day].value, forecasts[forecast].$),
 						weatherCode: parseInt(forecasts[forecast].W),
@@ -131,7 +129,7 @@ var met = (function () {
 				}
 			}
 			
-			forecastsCallback(rows);
+			forecastsCallback(location.id, service.id, rows);
 		} catch (err) {
 		  winston.error("The following error was thrown when handling a forecast response from service %s: %s", service.name, err.message, result);
 		}				
@@ -151,8 +149,6 @@ var met = (function () {
         observations = days[day].Rep;
         for (observation = 0; observation < observations.length; ++observation) {
           rows.push({
-            locationId: location.id,
-            serviceId: service.id,
             queryTime: getQueryTime(res.SiteRep.DV.dataDate),
             observationTime: getForecastTime(days[day].value, observations[observation].$),
             weatherCode: parseInt(observations[observation].W),
@@ -163,7 +159,7 @@ var met = (function () {
         }
       }
       
-      observationsCallback(rows);
+      observationsCallback(location.id, service.id, rows);
     } catch (err) {
       winston.error("The following error was thrown when handling an observation response from service %s: %s", service.name, err.message, result);
     }       
