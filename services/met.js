@@ -10,7 +10,6 @@ var met = (function () {
 	var queryForecastFreqHrs = 1;
 	var forecastFreqHrs = 3;
 	var forecastAheadHrs = 72;
-	var queryObservationFreqHrs = 1;
 	
 	var weatherCodes = {
 		"0": { weatherIcon: "wi-night-clear" },
@@ -49,9 +48,8 @@ var met = (function () {
 	var forecastUrl = "http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/json/3672?res=3hourly&key=";
 	var observationUrl = "http://datapoint.metoffice.gov.uk/public/data/val/wxobs/all/json/3672?res=hourly&key=";
 	var apiKey = "c5ff98ca-c067-4506-b77e-ed968997548a";
-	var firstForecastIntervalObject = null;
+	var firstForecastTimeoutObject = null;
 	var forecastIntervalObject = null;
-	var observationIntervalObject = null;
 	var forecastCallback = null;
 	var observationCallback = null;
 	var service = null;
@@ -184,47 +182,30 @@ var met = (function () {
 			
 			// TODO: Query site list
 			
-			function queryForecastLocations () {
+			function queryLocations () {
 				var i;
 				for (i = 0; i < locations.length; ++i) {
 					doForecastQuery(locations[i]);
+					doObservationQuery(locations[i]);
 				}
 			};
 			
-			function queryObservationLocations () {
-        var i;
-        for (i = 0; i < locations.length; ++i) {
-          doObservationQuery(locations[i]);
-        }
-      };
-			
 			// Query immediately, then on every interval
-			queryForecastLocations(); // Immediate
-			firstForecastIntervalObject = setTimeout(function () {
-				queryForecastLocations(); // First interval
-				forecastIntervalObject = setInterval(queryForecastLocations, queryForecastFreqHrs * 60 * 60 * 1000); // Subsequent intervals
+			queryLocations(); // Immediate
+			firstForecastTimeoutObject = setTimeout(function () {
+				queryLocations(); // First interval
+				forecastIntervalObject = setInterval(queryLocations, queryForecastFreqHrs * 60 * 60 * 1000); // Subsequent intervals
 			}, getFirstIntervalDelay());
-			
-			queryObservationLocations(); // Immediate
-			observationIntervalObject = setTimeout(function () {
-			  queryObservationLocations();
-			}, queryObservationFreqHrs * 60 * 60 * 1000); // Subsequent intervals
-			
 		},
 		
 		stop: function () {
-			if (firstForecastIntervalObject) {
-				clearInterval(firstForecastIntervalObject);
+			if (firstForecastTimeoutObject) {
+				clearTimeout(firstForecastTimeoutObject);
 				
 				if (forecastIntervalObject) {
 					clearInterval(forecastIntervalObject);
 				}				
-			}
-			
-			if (observationIntervalObject) {
-			  clearInterval(observationIntervalObject);
-			}
-		  
+			}		  
 		},
 		
 		getWeatherCodes: function () {
